@@ -11,6 +11,29 @@ protocol Decoding {
     
 }
 
+extension Optional {
+    
+    func getOrElse(defaultValue: T) -> T {
+        if self == nil {
+            return defaultValue
+        }
+        else {
+            return self!
+        }
+    }
+    
+    func flatMap<S>(f: (T) -> S) -> S? {
+        if self == nil {
+            return nil
+        }
+        else {
+            return f(self!)
+        }
+    }
+    
+    
+}
+
 extension Decoder {
     
     var string: String? {
@@ -41,16 +64,32 @@ extension Decoder {
 class Person : Decoding {
     
     let name: String
-    var repairs: [String] = []
+    let repairs: [String]
+    let carName: String?
     
+    //The GOOD - do this
     required init?(decoder: Decoder) {
         self.name = decoder["name"].string!
-        
-        if let r = decoder["car"]["repairs"].arr {
-            self.repairs = map(r, { x in x.string! })
-        }
-        
+        self.carName = decoder["car"]["name"].string
+        self.repairs = decoder["car"]["repairs"].arr.flatMap { rep in
+            map(rep, { x in x.string! })
+        } ?? []
     }
+    
+    
+    //The BAD - Don't do this
+    init(dict: [String:AnyObject]) {
+        self.name = dict["name"] as String
+        var reps:[String] = []
+        if let car = dict["car"] as? [String:AnyObject] {
+            self.carName = car["name"] as? String
+            if let rep = car["repairs"] as? [String] {
+                reps = rep
+            }
+        }
+        self.repairs = []
+    }
+    
     
 }
 
@@ -252,10 +291,29 @@ let susie: [String:AnyObject] =
     ]
 ]
 
+let kenny: [String:AnyObject] =
+[
+    "name" : "Kenny",
+    "scheduleDays" : [2, 4, 5, 4],
+    "friends" : [
+        [ "name" : "Eric", "age" : 11 ],
+        [ "name" : "Chelsey", "age" : 10 ]
+    ],
+    "car" : [
+        "name" : "Ford"
+    ]
+]
+
+
+
 let bobDict = Decoder(dictionary: bob)
 let susieDict = Decoder(dictionary: susie)
-
-let dataArr = Decoder(array: [bob, susie])
+let kennyDict = Decoder(dictionary: kenny)
 
 let bobPerson = Person(decoder: bobDict)
 let susiePerson = Person(decoder: susieDict)
+let kennyPerson = Person(decoder: kennyDict)
+
+Person(dict: kenny).carName
+
+bobPerson?.repairs
