@@ -52,6 +52,10 @@ extension Decoder {
         return self.val as? Float
     }
     
+    var bool: Bool? {
+        return self.val as? Bool
+    }
+    
     var errorMessage: String? {
         if let err = self.err as NSError? {
             return err.userInfo!["message"] as String?
@@ -66,6 +70,7 @@ class Person : Decoding {
     let name: String
     let repairs: [String]
     let carName: String?
+    let firstFriend: String
     
     //The GOOD - do this
     required init?(decoder: Decoder) {
@@ -74,6 +79,7 @@ class Person : Decoding {
         self.repairs = decoder["car"]["repairs"].arr.flatMap { rep in
             map(rep, { x in x.string! })
         } ?? []
+        self.firstFriend = decoder["friends"][0]["name"].string!
     }
     
     
@@ -81,13 +87,17 @@ class Person : Decoding {
     init(dict: [String:AnyObject]) {
         self.name = dict["name"] as String
         var reps:[String] = []
+        
         if let car = dict["car"] as? [String:AnyObject] {
             self.carName = car["name"] as? String
             if let rep = car["repairs"] as? [String] {
                 reps = rep
             }
         }
-        self.repairs = []
+        self.repairs = reps
+        
+        let friends = dict["friends"] as [AnyObject]
+        self.firstFriend = friends[0]["name"] as String
     }
     
     
@@ -99,8 +109,8 @@ struct Decoder {
     let notADictionaryError = NSError(domain: "com.optionreader", code: 3, userInfo: [ "message" : "data is not dictionary like" ])
     
     
-    var rawDictionary: [String : AnyObject]?
-    var rawArray: [AnyObject]?
+    private var rawDictionary: [String : AnyObject]?
+    private var rawArray: [AnyObject]?
     private var value: AnyObject?
     private var error: NSError?
     let depth: Int
@@ -272,8 +282,8 @@ let bob: [String:AnyObject] =
     "name" : "Bob",
     "scheduleDays" : [2, 4, 5, 4],
     "friends" : [
-        [ "name" : "Eric", "age" : 11 ],
-        [ "name" : "Chelsey", "age" : 10 ]
+        [ "name" : "Chelsey", "age" : 10 ],
+        [ "name" : "Eric", "age" : 11 ]
     ],
     "car" : [
         "name" : "Honda",
@@ -314,6 +324,6 @@ let bobPerson = Person(decoder: bobDict)
 let susiePerson = Person(decoder: susieDict)
 let kennyPerson = Person(decoder: kennyDict)
 
-Person(dict: kenny).carName
+let kennyFromDict = Person(dict: kenny)
 
 bobPerson?.repairs
